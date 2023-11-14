@@ -234,6 +234,8 @@ html_template = f"""
 </html>
 """
 
-# Save the template to an HTML file (optional)
-with open("report_template.html", "w") as template_file:
-    template_file.write(html_template)
+import pdfkit
+
+pdf_file_path = "report.pdf"
+
+pdfkit.from_string(html_template, pdf_file_path)
