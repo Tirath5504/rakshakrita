@@ -4,9 +4,9 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 import networkx as nx
-from faker import Faker
-from datetime import timedelta
-import random
+import requests
+import json
+import csv
 
 def plot_to_base64(plot):
     buffer = io.BytesIO()
@@ -15,39 +15,29 @@ def plot_to_base64(plot):
     plot_base64 = base64.b64encode(buffer.read()).decode('utf-8')
     return f"data:image/png;base64,{plot_base64}"
 
-fake = Faker()
+response= requests.get("https://rakshakrita0.vercel.app/api/authority/feedback")
+jsondata = response.json()
+data = json.loads(json.dumps(jsondata.get('feedbacks')))
 
-station_ids = [
-    '6536be3227c19dbd146b1d61',
-    '6539279ee0265e4af914b84f',
-    '6539279ee0265e4af914b84a',
-    '6539279ee0265e4af914b84b',
-    '6539279ee0265e4af914b851',
-    '6539279ee0265e4af914b856',
-    '6539279ee0265e4af914b846',
-    '6539279ee0265e4af914b848',
-    '6539279ee0265e4af914b849'
-]
+csv_file_in_memory = io.StringIO()
 
-records = []
+csv_writer = csv.writer(csv_file_in_memory)
 
-for station_id in station_ids:
-    for _ in range(1000):
-        record = {
-            'stationId': station_id,
-            'createdAt': (fake.date_this_decade() + timedelta(days=random.randint(0, 9))).strftime('%Y-%m-%d'),
-            'type': random.choice(['miscellaneous', 'Negative Feedback', 'Neutral Feedback', 'Positive Feedback']),
-            'issue': random.choice(['Unprofessional Conduct', 'Response Time', 'misconduct', 'Use of Firearms', 'Inefficiency', 'Negligence', 'Misconduct'])
-        }
-        records.append(record)
+header = data[0].keys()
+csv_writer.writerow(header)
 
-df = pd.DataFrame(records)
+for row in data:
+    csv_writer.writerow(row.values())
 
-df = df.sample(frac=1).reset_index(drop=True)
+csv_file_in_memory.seek(0)
 
-for i, row in df.iterrows():
-    if row['type'] != 'Negative Feedback':
-        row['issue'] = None
+df = pd.read_csv(csv_file_in_memory)
+
+df.drop(columns=['_id', 'description', '__v', 'id'], inplace=True)
+
+df['createdAt'] = pd.to_datetime(df['createdAt'])
+df.loc[:, 'createdAt'] = df.loc[:, 'createdAt'].dt.date
+df['createdAt'] = pd.to_datetime(df['createdAt'])
 
 # Plot countplot
 sns.countplot(x='issue', data=df)
@@ -56,10 +46,11 @@ plt.xticks(rotation=45)
 count_plot_base64 = plot_to_base64(plt)
 
 # Plot line plot
-df['createdAt'] = pd.to_datetime(df['createdAt'])
-monthly_counts = df.groupby(df['createdAt'].dt.to_period("M")).size()
-plt.title('Monthly Entries')
-plt.xlabel('Month')
+weekly_counts = df.groupby(df['createdAt'].dt.to_period("W")).size()
+weekly_counts.index = weekly_counts.index.astype(str)
+plt.plot(weekly_counts.index, weekly_counts.values)
+plt.title('Weekly Entries')
+plt.xlabel('Week')
 plt.ylabel('Count')
 line_plot_base64 = plot_to_base64(plt)
 
@@ -77,18 +68,22 @@ for column in df.columns:
     if df[column].dtype == 'object':
         df_encoded[column] = label_encoder.fit_transform(df[column])
 
+df_encoded.drop(columns=['attachment'], inplace=True)
+
 # Plot heatmap
 sns.heatmap(df_encoded.corr(), annot=True, cmap='viridis')
 plt.title('Correlation Heatmap')
 heatmap_base64 = plot_to_base64(plt)
 
+df_encoded = df[df.type == 'Negative Feedback']
+
 # Plot complex heatmap
-sns.heatmap(pd.crosstab(df['type'], df['issue'], normalize='index'), cmap='plasma', annot=True)
+sns.heatmap(pd.crosstab(df_encoded['type'], df_encoded['issue'], normalize='index'), cmap='plasma', annot=True)
 plt.title('Heatmap of Type vs. Issue')
 complex_heatmap_base64 = plot_to_base64(plt)
 
 # Plot network graph
-temp_df = df.dropna(subset=['issue'])
+temp_df = df_encoded.dropna(subset=['issue'])
 G = nx.from_pandas_edgelist(temp_df, 'type', 'issue')
 nx.draw(G, with_labels=True)
 plt.title('Network Plot of Type-Issue Relationships')
@@ -187,50 +182,43 @@ html_template = """
             <div class="graphContainer">
                 <h3>Issue Bar Graph</h3>
                 <p>Bar Graph showing the count of various issues</p>
-                <img src="CountPlot (1).png" alt="Issue Bar Graph">
+                <img src="data:image/png;base64,{{count_plot_base64}}" alt="Issue Bar Graph">
             </div>
             
             <div class="graphContainer">
                 <h3>Performance Trend</h3>
                 <p>Line plot showing the trend of performance over time</p>
-                <img src="LinePlot (1).png" alt="Performance Trend">
+                <img src="{line_plot_base64}" alt="Performance Trend">
             </div>
             
             <div class="graphContainer">
                 <h3>Issue Pie Chart</h3>
                 <p>Pie Chart illustrating different issues</p>
-                <img src="PieChart (1).png" alt="Issue Pie Chart">
+                <img src=f"{pie_chart_base64}" alt="Issue Pie Chart">
             </div>
             
             <div class="graphContainer">
                 <h3>Simple Heat Map</h3>
                 <p>Heat map showing direct relation between columns</p>
-                <img src="SimpleHeatmap (1).png" alt="Simple Heat Map">
+                <img src="{heatmap_base64}" alt="Simple Heat Map">
             </div>
             
             <div class="graphContainer">
                 <h3>Complex Heat Map</h3>
                 <p>Heat map showing indirect relation between columns</p>
-                <img src="ComplexHeatmap (1).png" alt="Complex Heat Map">
+                <img src="{complex_heatmap_base64}" alt="Complex Heat Map">
             </div>
             
             <div class="graphContainer">
                 <h3>Network Graph</h3>
                 <p>Correlation between issue and type illustrated</p>
-                <img src="NetworkPlot (1).png" alt="Network Graph">
+                <img src="{network_plot_base64}" alt="Network Graph">
             </div>
         </div>
     </div>
 </body>
 </html>
 """
-
-html_template = html_template.replace('img src="CountPlot.png"', f'img src="{count_plot_base64}"')
-html_template = html_template.replace('img src="LinePlot.png"', f'img src="{line_plot_base64}"')
-html_template = html_template.replace('img src="PieChart.png"', f'img src="{pie_chart_base64}"')
-html_template = html_template.replace('img src="SimpleHeatmap.png"', f'img src="{heatmap_base64}"')
-html_template = html_template.replace('img src="ComplexHeatmap.png"', f'img src="{complex_heatmap_base64}"')
-html_template = html_template.replace('img src="NetworkPlot.png"', f'img src="{network_plot_base64}"')
 
 # Save the template to an HTML file (optional)
 with open("report_template.html", "w") as template_file:
