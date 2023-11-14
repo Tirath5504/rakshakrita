@@ -1,3 +1,99 @@
+import io
+import base64
+import matplotlib.pyplot as plt
+import seaborn as sns
+import pandas as pd
+import networkx as nx
+from faker import Faker
+from datetime import timedelta
+import random
+
+def plot_to_base64(plot):
+    buffer = io.BytesIO()
+    plot.savefig(buffer, format='png')
+    buffer.seek(0)
+    plot_base64 = base64.b64encode(buffer.read()).decode('utf-8')
+    return f"data:image/png;base64,{plot_base64}"
+
+fake = Faker()
+
+station_ids = [
+    '6536be3227c19dbd146b1d61',
+    '6539279ee0265e4af914b84f',
+    '6539279ee0265e4af914b84a',
+    '6539279ee0265e4af914b84b',
+    '6539279ee0265e4af914b851',
+    '6539279ee0265e4af914b856',
+    '6539279ee0265e4af914b846',
+    '6539279ee0265e4af914b848',
+    '6539279ee0265e4af914b849'
+]
+
+records = []
+
+for station_id in station_ids:
+    for _ in range(1000):
+        record = {
+            'stationId': station_id,
+            'createdAt': (fake.date_this_decade() + timedelta(days=random.randint(0, 9))).strftime('%Y-%m-%d'),
+            'type': random.choice(['miscellaneous', 'Negative Feedback', 'Neutral Feedback', 'Positive Feedback']),
+            'issue': random.choice(['Unprofessional Conduct', 'Response Time', 'misconduct', 'Use of Firearms', 'Inefficiency', 'Negligence', 'Misconduct'])
+        }
+        records.append(record)
+
+df = pd.DataFrame(records)
+
+df = df.sample(frac=1).reset_index(drop=True)
+
+for i, row in df.iterrows():
+    if row['type'] != 'Negative Feedback':
+        row['issue'] = None
+
+# Plot countplot
+sns.countplot(x='issue', data=df)
+plt.title('Distribution of Issues')
+plt.xticks(rotation=45)
+count_plot_base64 = plot_to_base64(plt)
+
+# Plot line plot
+df['createdAt'] = pd.to_datetime(df['createdAt'])
+monthly_counts = df.groupby(df['createdAt'].dt.to_period("M")).size()
+plt.title('Monthly Entries')
+plt.xlabel('Month')
+plt.ylabel('Count')
+line_plot_base64 = plot_to_base64(plt)
+
+# Plot pie chart
+df['issue'].value_counts().plot.pie(autopct='%1.1f%%')
+plt.title('Proportion of Issues')
+pie_chart_base64 = plot_to_base64(plt)
+
+from sklearn.preprocessing import LabelEncoder
+
+df_encoded = df.copy()
+label_encoder = LabelEncoder()
+
+for column in df.columns:
+    if df[column].dtype == 'object':
+        df_encoded[column] = label_encoder.fit_transform(df[column])
+
+# Plot heatmap
+sns.heatmap(df_encoded.corr(), annot=True, cmap='viridis')
+plt.title('Correlation Heatmap')
+heatmap_base64 = plot_to_base64(plt)
+
+# Plot complex heatmap
+sns.heatmap(pd.crosstab(df['type'], df['issue'], normalize='index'), cmap='plasma', annot=True)
+plt.title('Heatmap of Type vs. Issue')
+complex_heatmap_base64 = plot_to_base64(plt)
+
+# Plot network graph
+temp_df = df.dropna(subset=['issue'])
+G = nx.from_pandas_edgelist(temp_df, 'type', 'issue')
+nx.draw(G, with_labels=True)
+plt.title('Network Plot of Type-Issue Relationships')
+network_plot_base64 = plot_to_base64(plt)
+
 html_template = """
 <!DOCTYPE html>
 <html lang="en">
@@ -128,6 +224,13 @@ html_template = """
 </body>
 </html>
 """
+
+html_template = html_template.replace('img src="CountPlot.png"', f'img src="{count_plot_base64}"')
+html_template = html_template.replace('img src="LinePlot.png"', f'img src="{line_plot_base64}"')
+html_template = html_template.replace('img src="PieChart.png"', f'img src="{pie_chart_base64}"')
+html_template = html_template.replace('img src="SimpleHeatmap.png"', f'img src="{heatmap_base64}"')
+html_template = html_template.replace('img src="ComplexHeatmap.png"', f'img src="{complex_heatmap_base64}"')
+html_template = html_template.replace('img src="NetworkPlot.png"', f'img src="{network_plot_base64}"')
 
 # Save the template to an HTML file (optional)
 with open("report_template.html", "w") as template_file:
