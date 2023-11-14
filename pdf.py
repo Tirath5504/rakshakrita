@@ -40,24 +40,30 @@ df.loc[:, 'createdAt'] = df.loc[:, 'createdAt'].dt.date
 df['createdAt'] = pd.to_datetime(df['createdAt'])
 
 # Plot countplot
+plt.figure(figsize=(8, 12))
 sns.countplot(x='issue', data=df)
 plt.title('Distribution of Issues')
 plt.xticks(rotation=45)
 count_plot_base64 = plot_to_base64(plt)
+plt.close()
 
 # Plot line plot
 weekly_counts = df.groupby(df['createdAt'].dt.to_period("W")).size()
 weekly_counts.index = weekly_counts.index.astype(str)
+plt.figure(figsize=(8, 12))
 plt.plot(weekly_counts.index, weekly_counts.values)
 plt.title('Weekly Entries')
 plt.xlabel('Week')
 plt.ylabel('Count')
 line_plot_base64 = plot_to_base64(plt)
+plt.close()
 
 # Plot pie chart
+plt.figure(figsize=(8, 12))
 df['issue'].value_counts().plot.pie(autopct='%1.1f%%')
 plt.title('Proportion of Issues')
 pie_chart_base64 = plot_to_base64(plt)
+plt.close()
 
 from sklearn.preprocessing import LabelEncoder
 
@@ -71,32 +77,31 @@ for column in df.columns:
 df_encoded.drop(columns=['attachment'], inplace=True)
 
 # Plot heatmap
+plt.figure(figsize=(8, 12))
 sns.heatmap(df_encoded.corr(), annot=True, cmap='viridis')
 plt.title('Correlation Heatmap')
 heatmap_base64 = plot_to_base64(plt)
+plt.close()
 
 df_encoded = df[df.type == 'Negative Feedback']
 
 # Plot complex heatmap
+plt.figure(figsize=(8, 12))
 sns.heatmap(pd.crosstab(df_encoded['type'], df_encoded['issue'], normalize='index'), cmap='plasma', annot=True)
 plt.title('Heatmap of Type vs. Issue')
 complex_heatmap_base64 = plot_to_base64(plt)
+plt.close()
 
 # Plot network graph
 temp_df = df_encoded.dropna(subset=['issue'])
+plt.figure(figsize=(8, 12))
 G = nx.from_pandas_edgelist(temp_df, 'type', 'issue')
 nx.draw(G, with_labels=True)
 plt.title('Network Plot of Type-Issue Relationships')
 network_plot_base64 = plot_to_base64(plt)
+plt.close()
 
-html_template = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Police Station Performance Report</title>
-
+styleTag = """
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Outfit&display=swap');
         
@@ -161,6 +166,15 @@ html_template = """
             margin-top: 1rem;
         }
     </style>
+"""
+html_template = f"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Police Station Performance Report</title>
+    {styleTag}     
 </head>
 
 <body>
@@ -182,7 +196,7 @@ html_template = """
             <div class="graphContainer">
                 <h3>Issue Bar Graph</h3>
                 <p>Bar Graph showing the count of various issues</p>
-                <img src="data:image/png;base64,{{count_plot_base64}}" alt="Issue Bar Graph">
+                <img src="{count_plot_base64}" alt="Issue Bar Graph">
             </div>
             
             <div class="graphContainer">
@@ -194,7 +208,7 @@ html_template = """
             <div class="graphContainer">
                 <h3>Issue Pie Chart</h3>
                 <p>Pie Chart illustrating different issues</p>
-                <img src=f"{pie_chart_base64}" alt="Issue Pie Chart">
+                <img src="{pie_chart_base64}" alt="Issue Pie Chart">
             </div>
             
             <div class="graphContainer">
