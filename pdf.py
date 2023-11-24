@@ -114,7 +114,9 @@ styleTag = """
             font-family: 'Outfit', sans-serif;
             text-align: center;
             /*background: linear-gradient(120deg,#ffb78b,#ff6000 100%) no-repeat;*/
-            background-color: aliceblue;
+            background-color: white;
+            width: 100vw;
+            
             color: #42445D;
         }
 
@@ -127,7 +129,6 @@ styleTag = """
         h1 {
             font-size: 2.6rem;
             padding-top: 1rem;
-            margin-bottom: 2rem;
         }
         h2 {
             font-size: 2rem;
@@ -152,11 +153,12 @@ styleTag = """
         
         
         .graphContainer:nth-child(even) {
+            padding: 0 40px;
             text-align: end;
         }
         .graphContainer:nth-child(odd) {
             text-align: start;
-            padding: 0 0;
+            padding: 0 40px;
         }
         img{
              mix-blend-mode: multiply; 
@@ -181,7 +183,9 @@ html_template = f"""
     <div class="wrapper">
 
         <h1>Police Station Performance Report</h1>
-
+        <table style="width:100%;">
+        <tr>
+        <th>
         <div class="details">
             <p><strong>Description:</strong> This report provides an analysis of the performance of police stations.</p>
             <p><strong>Creator:</strong> RakshakRita</p>
@@ -196,46 +200,51 @@ html_template = f"""
             <div class="graphContainer">
                 <h3>Issue Bar Graph</h3>
                 <p>Bar Graph showing the count of various issues</p>
-                <img src="{count_plot_base64}" alt="Issue Bar Graph">
+                <img style="height:530px" src="{count_plot_base64}" alt="Issue Bar Graph">
             </div>
             
-            <div class="graphContainer">
+            <div style="padding-top: 25px;" class="graphContainer">
                 <h3>Performance Trend</h3>
                 <p>Line plot showing the trend of performance over time</p>
-                <img src="{line_plot_base64}" alt="Performance Trend">
+                <img style="height:450px;" src="{line_plot_base64}" alt="Performance Trend">
             </div>
             
             <div class="graphContainer">
                 <h3>Issue Pie Chart</h3>
                 <p>Pie Chart illustrating different issues</p>
-                <img src="{pie_chart_base64}" alt="Issue Pie Chart">
+                <img style="height:400px;" src="{pie_chart_base64}" alt="Issue Pie Chart">
             </div>
             
-            <div class="graphContainer">
+            <div style="padding-top: 30px;" class="graphContainer">
                 <h3>Simple Heat Map</h3>
                 <p>Heat map showing direct relation between columns</p>
-                <img src="{heatmap_base64}" alt="Simple Heat Map">
+                <img style="height:400px;" src="{heatmap_base64}" alt="Simple Heat Map">
             </div>
             
             <div class="graphContainer">
                 <h3>Complex Heat Map</h3>
                 <p>Heat map showing indirect relation between columns</p>
-                <img src="{complex_heatmap_base64}" alt="Complex Heat Map">
+                <img style="height:400px;" src="{complex_heatmap_base64}" alt="Complex Heat Map">
             </div>
             
-            <div class="graphContainer">
+            <div style="padding-top: 150px;" class="graphContainer">
                 <h3>Network Graph</h3>
                 <p>Correlation between issue and type illustrated</p>
-                <img src="{network_plot_base64}" alt="Network Graph">
+                <img style="max-height:800px;" src="{network_plot_base64}" alt="Network Graph">
             </div>
         </div>
+        </th>
+        </tr>
+        </table>
     </div>
 </body>
 </html>
 """
 
+print(html_template)
+
+"""
 import pdfkit
-
 pdf_file_path = "report.pdf"
-
 pdfkit.from_string(html_template, pdf_file_path)
+"""
